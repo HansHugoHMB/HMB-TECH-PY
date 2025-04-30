@@ -7,5 +7,4 @@ matplotlib
 scikit-learn
 requests
 beautifulsoup4
-pyodide
-micropip
+pytest
