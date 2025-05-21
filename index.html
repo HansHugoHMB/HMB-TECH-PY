@@ -1,44 +1,320 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Mini Colab - Hans</title>
-  <style>
-    body { background: #0D1C40; color: white; font-family: monospace; padding: 20px; }
-    textarea { width: 100%; height: 150px; background: #111; color: #0f0; padding: 10px; border-radius: 8px; }
-    button { padding: 10px 20px; margin-top: 10px; background: #FFD700; border: none; border-radius: 5px; cursor: pointer; }
-    #result { margin-top: 20px; white-space: pre-wrap; background: #222; padding: 15px; border-radius: 10px; color: #00FF7F; }
-    img { margin-top: 20px; max-width: 100%; height: auto; }
-  </style>
+    <title>HMB Tech - Image to SVG Converter</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        /* Style intégré */
+        :root {
+            --primary-color: #0D1C40;
+            --accent-color: gold;
+            --border-radius: 8px;
+            --spacing: 20px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--primary-color);
+            color: var(--accent-color);
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: var(--spacing);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--spacing);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: var(--spacing);
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--accent-color);
+            border-radius: var(--border-radius);
+            padding: var(--spacing);
+            margin: var(--spacing) 0;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-zone:hover {
+            background-color: rgba(255, 215, 0, 0.1);
+        }
+
+        .upload-zone input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .preview {
+            max-width: 100%;
+            margin: var(--spacing) 0;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+
+        .preview img, .preview svg {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .options {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: var(--spacing);
+            border-radius: var(--border-radius);
+            margin: var(--spacing) 0;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn {
+            background-color: var(--accent-color);
+            color: var(--primary-color);
+            border: none;
+            padding: 12px 24px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .code-view {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: var(--spacing);
+            border-radius: var(--border-radius);
+            margin-top: var(--spacing);
+            overflow-x: auto;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(13, 28, 64, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .loading::after {
+            content: '';
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--accent-color);
+            border-top: 5px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background-color: #ff00001a;
+            color: #ff6b6b;
+            padding: var(--spacing);
+            border-radius: var(--border-radius);
+            margin: var(--spacing) 0;
+            border: 1px solid #ff6b6b;
+        }
+    </style>
 </head>
 <body>
-  <h2>Mini Colab - Hans</h2>
-  <textarea id="code"></textarea>
-  <br>
-  <button onclick="run()">Exécuter</button>
-  <div id="result">Résultat...</div>
-  <img id="image" style="display:none;" />
-  
-  <script>
-    async function run() {
-      const code = document.getElementById("code").value;
-      const res = await fetch('/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
-      });
-      const data = await res.json();
-      
-      // Afficher le résultat du code Python
-      document.getElementById("result").textContent = data.output;
-      
-      // Si une image est renvoyée, l'afficher
-      if (data.image) {
-        const imageElement = document.getElementById("image");
-        imageElement.src = 'data:image/png;base64,' + data.image;
-        imageElement.style.display = 'block';  // Afficher l'image
-      }
-    }
-  </script>
+    <div id="app" class="container">
+        <h1>HMB Tech - Image to SVG Converter</h1>
+        
+        <!-- Zone de téléversement -->
+        <div class="upload-zone" @dragover.prevent @drop.prevent="handleDrop">
+            <input 
+                type="file" 
+                @change="handleFileSelect" 
+                accept=".png,.jpg,.jpeg"
+                ref="fileInput"
+            >
+            <p>Glissez une image ou cliquez pour sélectionner</p>
+        </div>
+
+        <!-- Message d'erreur -->
+        <div v-if="error" class="error">
+            {{ error }}
+        </div>
+
+        <!-- Prévisualisation de l'image -->
+        <div v-if="originalImage" class="preview">
+            <img :src="originalImage" alt="Prévisualisation">
+        </div>
+
+        <!-- Options -->
+        <div v-if="originalImage" class="options">
+            <div class="checkbox-wrapper">
+                <input 
+                    type="checkbox" 
+                    id="transparent" 
+                    v-model="transparent"
+                    @change="convertToSVG"
+                >
+                <label for="transparent">Arrière-plan transparent</label>
+            </div>
+        </div>
+
+        <!-- Prévisualisation SVG -->
+        <div v-if="svgContent" class="preview" v-html="svgContent"></div>
+
+        <!-- Boutons d'action -->
+        <div v-if="svgContent">
+            <button @click="downloadSVG" class="btn">
+                Télécharger SVG
+            </button>
+            <button @click="toggleCode" class="btn">
+                {{ showCode ? 'Masquer' : 'Voir' }} le code SVG
+            </button>
+        </div>
+
+        <!-- Affichage du code -->
+        <pre v-if="showCode && svgContent" class="code-view">{{ svgContent }}</pre>
+
+        <!-- Loading -->
+        <div v-if="loading" class="loading"></div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    originalImage: null,
+                    svgContent: null,
+                    transparent: false,
+                    showCode: false,
+                    loading: false,
+                    error: null
+                }
+            },
+            methods: {
+                handleFileSelect(event) {
+                    const file = event.target.files[0]
+                    if (file) {
+                        this.processFile(file)
+                    }
+                },
+                handleDrop(event) {
+                    const file = event.dataTransfer.files[0]
+                    if (file) {
+                        this.processFile(file)
+                    }
+                },
+                processFile(file) {
+                    if (!file.type.match('image.*')) {
+                        this.error = 'Veuillez sélectionner une image valide (PNG, JPG, JPEG)'
+                        return
+                    }
+
+                    this.error = null
+                    const reader = new FileReader()
+                    reader.onload = (e) => {
+                        this.originalImage = e.target.result
+                        this.convertToSVG()
+                    }
+                    reader.readAsDataURL(file)
+                },
+                async convertToSVG() {
+                    try {
+                        this.loading = true
+                        this.error = null
+
+                        const formData = new FormData()
+                        const blob = await fetch(this.originalImage).then(r => r.blob())
+                        formData.append('file', blob, 'image.png')
+                        formData.append('transparent', this.transparent)
+
+                        const response = await fetch('/upload', {
+                            method: 'POST',
+                            body: formData
+                        })
+
+                        if (!response.ok) {
+                            throw new Error('Erreur lors de la conversion')
+                        }
+
+                        const data = await response.json()
+                        if (data.error) {
+                            throw new Error(data.error)
+                        }
+
+                        this.svgContent = data.svg
+                    } catch (error) {
+                        this.error = error.message
+                    } finally {
+                        this.loading = false
+                    }
+                },
+                downloadSVG() {
+                    if (!this.svgContent) return
+
+                    const blob = new Blob([this.svgContent], { type: 'image/svg+xml' })
+                    const url = window.URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = 'hmb-tech.svg'
+                    document.body.appendChild(a)
+                    a.click()
+                    document.body.removeChild(a)
+                    window.URL.revokeObjectURL(url)
+                },
+                toggleCode() {
+                    this.showCode = !this.showCode
+                }
+            }
+        }).mount('#app')
+    </script>
 </body>
 </html>
