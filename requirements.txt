@@ -1,121 +1,41 @@
-# Data science
-numpy
-pandas
-matplotlib
-seaborn
-scikit-learn
-scipy
-statsmodels
-xgboost
-lightgbm
-catboost
-mlxtend
-tensorflow
-torch
-keras
-transformers
-nltk
-spacy
-gensim
-textblob
-wordcloud
-opencv-python
-pydataset
-pymongo
+# Web Framework et dépendances
+Flask==2.3.3
+Flask-Cors==4.0.0
+gunicorn==21.2.0
+Werkzeug==2.3.7
+python-dotenv==1.0.0
 
-# Cryptographie / sécurité
-cryptography
-pycryptodome
-bcrypt
-pyjwt
-itsdangerous
-passlib
-simple-crypt
-ssl
+# Data Science essentiels
+numpy==1.24.3
+pandas==2.0.3
+scikit-learn==1.3.0
 
-# SVG, HTML, PHP, Web
-lxml
-beautifulsoup4
-html5lib
-markdown
-markdown2
-dominate
-weasyprint
-pillow
-jinja2
-Flask
-Flask-Cors
-Flask-SocketIO
-django
-requests
-httpx
-aiohttp
-fastapi
-python-multipart
-pywebview
-pyquery
-pdfkit
-gunicorn
+# Traitement d'images et visualisation
+Pillow==10.0.0
+matplotlib==3.7.2
+plotly==5.16.1
 
-# Téléversement, fichiers
-python-dotenv
-python-magic
-werkzeug
-tqdm
-watchdog
-PyYAML
-filetype
-pyexcel
-pyexcel-xlsx
-pyexcel-ods
-openpyxl
-xlrd
-xlwt
-docx
-python-docx
-pypdf2
-pdfminer.six
-mutagen
+# Utilitaires
+requests==2.31.0
+python-multipart==0.0.6
+pyyaml==6.0.1
+tqdm==4.65.0
+pytz==2023.3
 
-# Visualisation
-plotly
-bokeh
-dash
-altair
-pygal
-folium
-geopandas
-branca
-kaleido
+# Base de données
+pymongo==4.4.1
 
-# Graphiques interactifs & web
-streamlit
-panel
-voila
-gradio
-flask-ngrok
-pyvis
-pyinstrument
-dash-bootstrap-components
+# Interface utilisateur
+streamlit==1.25.0
+dash==2.11.1
+dash-bootstrap-components==1.4.2
 
-# Utilitaires / autres utiles
-psutil
-schedule
-pytz
-arrow
-pyfiglet
-rich
-loguru
-colored
-tabulate
-pyperclip
-pyautogui
-pyttsx3
-playsound
-qrcode
-Pygments
-validators
-sympy
-faker
-pipreqs
-autopep8
+# Sécurité
+cryptography==41.0.3
+bcrypt==4.0.1
+pyjwt==2.8.0
+
+# Traitement de fichiers
+openpyxl==3.1.2
+python-docx==0.8.11
+PyPDF2==3.0.1
