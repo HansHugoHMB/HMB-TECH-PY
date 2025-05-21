@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import sys
 import io
 import base64
@@ -6,51 +7,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 app = Flask(__name__)
+CORS(app)  # Pour permettre les appels depuis une page HTML
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
-    return """
-    <html>
-        <head>
-            <title>API Python de Hans Mbaya</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    background-color: #0D1C49;
-                    color: #FFD700;
-                    padding: 40px;
-                }
-                h2 {
-                    color: #FFD700;
-                }
-                pre {
-                    background-color: #1a2a5c;
-                    color: #FFD700;
-                    padding: 15px;
-                    border-radius: 5px;
-                }
-                code {
-                    background-color: #1f326f;
-                    padding: 2px 4px;
-                    border-radius: 4px;
-                    font-family: monospace;
-                    color: #FFD700;
-                }
-                p {
-                    font-size: 16px;
-                }
-            </style>
-        </head>
-        <body>
-            <h2>Bienvenue sur l'API Python de Hans Mbaya</h2>
-            <p>Utilisez une requête POST vers <code>/run</code> avec un JSON comme :</p>
-            <pre>{
-  "code": "print('Hello world')"
-}</pre>
-            <p>Si votre code contient <code>plt.plot</code>, un graphique sera généré automatiquement.</p>
-        </body>
-    </html>
-    """
+    return '''
+        <h1 style="color:gold;background-color:#0D1C49;padding:20px">
+        Bienvenue sur l'API HMB Python Runner
+        </h1>
+        <p style="color:white;padding:10px;">Fais une requête POST à <code>/run</code> pour exécuter du code Python.</p>
+    '''
 
 @app.route('/run', methods=['POST'])
 def run_code():
@@ -66,9 +32,9 @@ def run_code():
             img = io.BytesIO()
             plt.savefig(img, format='png')
             img.seek(0)
+
             img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
             plt.close()
-
             return jsonify({"output": "Voici votre image", "image": img_base64})
 
         stdout = io.StringIO()
