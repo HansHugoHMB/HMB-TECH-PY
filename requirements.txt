@@ -1,125 +1,122 @@
-
-# Web / API / Backend
-flask
-flask-cors
-fastapi
-uvicorn
-gunicorn
-django
-httpx
-requests
-aiohttp
-websockets
-python-dotenv
-
-# Téléversement & fichiers
-werkzeug
-python-multipart
-starlette
-openpyxl
-PyPDF2
-python-docx
-xlrd
-csv
-tabulate
-json5
-filetype
-mimetypes
-
-# Cryptographie / Sécurité
-cryptography
-pycryptodome
-bcrypt
-hashlib
-pyjwt
-passlib
-rsa
-safetypes
-
-# Data Science / Analyse
+# Data science
 numpy
 pandas
-scipy
 matplotlib
 seaborn
-statsmodels
 scikit-learn
+scipy
+statsmodels
 xgboost
 lightgbm
 catboost
-
-# Deep Learning / NLP
-torch
-torchvision
+mlxtend
 tensorflow
+torch
 keras
 transformers
-sentence-transformers
 nltk
 spacy
+gensim
 textblob
+wordcloud
+opencv-python
+pydataset
+pymongo
 
-# SVG, HTML, CSS
-svgwrite
-cairosvg
-html5lib
-beautifulsoup4
+# Cryptographie / sécurité
+cryptography
+pycryptodome
+hashlib
+bcrypt
+pyjwt
+itsdangerous
+passlib
+simple-crypt
+ssl
+
+# SVG, HTML, PHP, Web
 lxml
-jinja2
+beautifulsoup4
+html5lib
+markdown
+markdown2
 dominate
+weasyprint
+pillow
+jinja2
+Flask
+Flask-Cors
+Flask-SocketIO
+django
+requests
+httpx
+aiohttp
+fastapi
+python-multipart
+pywebview
+pyquery
+pdfkit
+gunicorn
 
-# Visualisation interactive
+# Téléversement, fichiers
+python-dotenv
+python-magic
+werkzeug
+tqdm
+watchdog
+PyYAML
+filetype
+pyexcel
+pyexcel-xlsx
+pyexcel-ods
+openpyxl
+xlrd
+xlwt
+docx
+python-docx
+pypdf2
+pdfminer.six
+mutagen
+
+# Visualisation
 plotly
 bokeh
 dash
 altair
+pygal
 folium
-pyecharts
+geopandas
+branca
+kaleido
+
+# Graphiques interactifs & web
 streamlit
-ipywidgets
+panel
+voila
+gradio
+flask-ngrok
+pyvis
+pyinstrument
+dash-bootstrap-components
 
-# Web scraping & automatisation
-selenium
-scrapy
-parsel
-mechanize
-pyppeteer
-
-# Interface et apps
-tkintertable
-PyQt5
-PySimpleGUI
-Kivy
-eel
-flaskwebgui
-streamlit-option-menu
-
-# Utilitaires fréquents
-tqdm
+# Utilitaires / autres utiles
+psutil
+schedule
+pytz
+arrow
 pyfiglet
 rich
 loguru
-uuid
-schedule
-arrow
-dateparser
-pytz
+colored
+tabulate
+pyperclip
+pyautogui
+pyttsx3
+playsound
+qrcode
+Pygments
+validators
+sympy
 faker
-watchdog
-
-# Compression / fichiers
-zlib
-lzma
-gzip
-zipfile38
-
-# Autres (utils, encodage, dev)
-pyyaml
-base64
-typing-extensions
-six
-markdown
-notebook
-jupyter
-colabcode
-pyngrok
+pipreqs
+autopep8
