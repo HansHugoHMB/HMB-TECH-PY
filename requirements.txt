@@ -10,4 +10,4 @@ cairosvg
 python-multipart
 gunicorn
 Pillow
-opencv-python-headless==4.8.0.74
+opencv-python-headless==4.7.0.72
