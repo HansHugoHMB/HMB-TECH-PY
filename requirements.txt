@@ -9,3 +9,4 @@ svgwrite
 cairosvg
 python-multipart
 gunicorn
+Pillow
