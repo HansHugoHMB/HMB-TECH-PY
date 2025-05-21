@@ -1,12 +1,11 @@
-from flask import Flask, request, jsonify, render_template_string, abort
+from flask import Flask, request, jsonify, render_template_string
 from PIL import Image
+import numpy as np
+import potrace
 import os
-import io
-import base64
 
 app = Flask(__name__)
 
-# Template HTML simple mais fonctionnel
 HTML = """
 <!DOCTYPE html>
 <html lang="fr">
@@ -47,6 +46,7 @@ HTML = """
             max-width: 100%;
             height: auto;
             margin: 10px 0;
+            background: white;
         }
         button {
             background: gold;
@@ -67,6 +67,12 @@ HTML = """
         }
         .error { background: #ff4444; color: white; }
         .success { background: #44ff44; color: black; }
+        #loader {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: gold;
+        }
     </style>
 </head>
 <body>
@@ -80,6 +86,7 @@ HTML = """
         </div>
 
         <div id="message"></div>
+        <div id="loader">Conversion en cours...</div>
 
         <div id="imagePreview" class="preview">
             <h3>Image originale :</h3>
@@ -87,7 +94,7 @@ HTML = """
         </div>
 
         <div id="svgResult" class="preview">
-            <h3>SVG généré :</h3>
+            <h3>SVG vectorisé :</h3>
             <div id="svgPreview"></div>
             <button onclick="downloadSVG()">Télécharger SVG</button>
             <button onclick="toggleCode()">Voir le code</button>
@@ -98,6 +105,7 @@ HTML = """
     <script>
         let currentSVG = '';
         const message = document.getElementById('message');
+        const loader = document.getElementById('loader');
         
         function showMessage(text, isError) {
             message.textContent = text;
@@ -122,12 +130,16 @@ HTML = """
             const form = new FormData();
             form.append('file', file);
 
+            loader.style.display = 'block';
+            document.getElementById('svgResult').style.display = 'none';
+
             fetch('/convert', {
                 method: 'POST',
                 body: form
             })
             .then(res => res.json())
             .then(data => {
+                loader.style.display = 'none';
                 if (data.error) {
                     throw new Error(data.error);
                 }
@@ -137,6 +149,7 @@ HTML = """
                 showMessage('Conversion réussie !', false);
             })
             .catch(err => {
+                loader.style.display = 'none';
                 showMessage(err.message || 'Erreur de conversion', true);
             });
         };
@@ -147,7 +160,7 @@ HTML = """
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'image-convertie.svg';
+            a.download = 'image-vectorisee.svg';
             a.click();
             URL.revokeObjectURL(url);
         }
@@ -166,41 +179,63 @@ HTML = """
 </html>
 """
 
-# Dossier pour les fichiers temporaires
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 def image_to_svg(file_path):
-    """Convertit une image en SVG avec data URL"""
+    """Convertit une image en véritable SVG vectoriel"""
     try:
+        # Ouvrir et préparer l'image
         with Image.open(file_path) as img:
-            # Convertir en RGB
-            if img.mode in ('RGBA', 'LA'):
-                bg = Image.new('RGB', img.size, (255, 255, 255))
-                bg.paste(img, mask=img.split()[-1])
-                img = bg
-            elif img.mode != 'RGB':
-                img = img.convert('RGB')
+            # Convertir en niveaux de gris
+            if img.mode != 'L':
+                img = img.convert('L')
             
             # Redimensionner si nécessaire
             max_size = 800
             if max(img.size) > max_size:
                 ratio = max_size / max(img.size)
-                img = img.resize([int(s * ratio) for s in img.size], Image.LANCZOS)
+                new_size = tuple(int(dim * ratio) for dim in img.size)
+                img = img.resize(new_size, Image.LANCZOS)
 
-            # Convertir en base64
-            buffer = io.BytesIO()
-            img.save(buffer, format='PNG', optimize=True)
-            img_b64 = base64.b64encode(buffer.getvalue()).decode()
+            # Convertir en tableau numpy
+            data = np.array(img)
+
+            # Créer un bitmap pour potrace
+            # Seuil à 128 pour la binarisation
+            bitmap = potrace.Bitmap(data < 128)
             
+            # Tracer les contours
+            path = bitmap.trace()
+
             # Générer le SVG
             width, height = img.size
-            return f'''<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" 
-                      xmlns="http://www.w3.org/2000/svg">
-                      <image width="{width}" height="{height}" 
-                      href="data:image/png;base64,{img_b64}"/>
-                   </svg>'''
+            svg = f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">'
+            svg += '<g transform="scale(1,-1) translate(0,-{})">'.format(height)
+
+            # Ajouter les chemins
+            for curve in path:
+                svg += '<path d="'
+                for segment in curve:
+                    x0, y0 = segment.start_point
+                    svg += f'M {x0:.1f} {y0:.1f} '
+                    
+                    if segment.is_corner:
+                        x1, y1 = segment.c
+                        x2, y2 = segment.end_point
+                        svg += f'L {x1:.1f} {y1:.1f} L {x2:.1f} {y2:.1f} '
+                    else:
+                        x1, y1 = segment.c1
+                        x2, y2 = segment.c2
+                        x3, y3 = segment.end_point
+                        svg += f'C {x1:.1f} {y1:.1f} {x2:.1f} {y2:.1f} {x3:.1f} {y3:.1f} '
+                
+                svg += 'Z" fill="black" />'
+            
+            svg += '</g></svg>'
+            return svg
+
     except Exception as e:
         raise Exception(f"Erreur de conversion : {str(e)}")
 
