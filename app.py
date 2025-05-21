@@ -7,7 +7,6 @@ import os
 import io
 import base64
 import cairosvg
-import potrace
 from pathlib import Path
 
 app = Flask(__name__)
