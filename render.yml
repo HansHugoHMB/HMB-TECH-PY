@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: HMB-TECH-PY
+    runtime: python
+    buildCommand: ""
+    startCommand: bash start.sh
+    pythonVersion: 3.12.1
