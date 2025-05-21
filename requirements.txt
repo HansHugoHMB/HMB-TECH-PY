@@ -10,3 +10,4 @@ cairosvg
 python-multipart
 gunicorn
 Pillow
+cv2
