@@ -1,79 +1,191 @@
-from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
+from flask import Flask, request, jsonify, render_template_string
 from PIL import Image
-import numpy as np
-import svgwrite
 import os
 import io
 import base64
-import cairosvg
-from pathlib import Path
 
 app = Flask(__name__)
-CORS(app)
 
-# Configuration
-UPLOAD_FOLDER = Path('uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+# Template HTML inline (pour éviter les problèmes de templates)
+HTML_TEMPLATE = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HMB Tech - Image to SVG</title>
+    <style>
+        body {
+            background-color: #0D1C40;
+            color: gold;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .upload-zone {
+            border: 2px dashed gold;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .preview {
+            max-width: 100%;
+            margin: 20px 0;
+            display: none;
+        }
+        .preview img, .preview svg {
+            max-width: 100%;
+            height: auto;
+        }
+        button {
+            background: gold;
+            color: #0D1C40;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HMB Tech - Convertisseur Image vers SVG</h1>
+        
+        <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" style="display:none" accept=".png,.jpg,.jpeg">
+            <p>Cliquez ou glissez une image ici</p>
+        </div>
 
-# Créer le dossier uploads s'il n'existe pas
-UPLOAD_FOLDER.mkdir(exist_ok=True)
+        <div id="preview" class="preview">
+            <h3>Image originale:</h3>
+            <img id="imagePreview">
+        </div>
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+        <div id="svgPreview" class="preview">
+            <h3>SVG généré:</h3>
+            <div id="svgContainer"></div>
+            <button onclick="downloadSVG()">Télécharger SVG</button>
+            <button onclick="toggleCode()">Voir le code SVG</button>
+        </div>
 
-def image_to_svg(image_path, transparent=False):
-    """Convertit une image en SVG optimisé"""
+        <pre id="svgCode" style="display:none; background: rgba(255,255,255,0.1); padding: 10px; color: gold;"></pre>
+    </div>
+
+    <script>
+        let currentSVG = '';
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('preview').style.display = 'block';
+                uploadImage(file);
+            }
+            reader.readAsDataURL(file);
+        });
+
+        async function uploadImage(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                currentSVG = data.svg;
+                document.getElementById('svgContainer').innerHTML = currentSVG;
+                document.getElementById('svgPreview').style.display = 'block';
+                
+            } catch (error) {
+                alert('Erreur lors du traitement de l\'image');
+            }
+        }
+
+        function downloadSVG() {
+            if (!currentSVG) return;
+            
+            const blob = new Blob([currentSVG], {type: 'image/svg+xml'});
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'hmb-tech.svg';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        function toggleCode() {
+            const codeElement = document.getElementById('svgCode');
+            if (codeElement.style.display === 'none') {
+                codeElement.textContent = currentSVG;
+                codeElement.style.display = 'block';
+            } else {
+                codeElement.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
+'''
+
+# Configuration simplifiée
+UPLOAD_FOLDER = 'uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+def simple_image_to_svg(image_path):
+    """Version simplifiée de la conversion en SVG"""
     try:
-        # Ouvrir l'image avec Pillow
         with Image.open(image_path) as img:
-            # Convertir en mode RGB si nécessaire
             if img.mode != 'RGB':
                 img = img.convert('RGB')
             
-            # Redimensionner si l'image est trop grande
-            max_size = 1200
+            max_size = 800
             if max(img.size) > max_size:
                 ratio = max_size / max(img.size)
                 new_size = tuple(int(dim * ratio) for dim in img.size)
                 img = img.resize(new_size, Image.LANCZOS)
 
-            # Convertir en noir et blanc pour le traçage
-            bw = img.convert('L')
+            buffer = io.BytesIO()
+            img.save(buffer, format='PNG')
+            img_base64 = base64.b64encode(buffer.getvalue()).decode()
             
-            # Convertir en tableau numpy et créer un bitmap
-            bitmap = potrace.Bitmap(np.array(bw))
+            width, height = img.size
             
-            # Tracer les contours
-            path = bitmap.trace()
+            svg = f'''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+            <svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
+                <image width="{width}" height="{height}" 
+                       href="data:image/png;base64,{img_base64}"/>
+            </svg>'''
             
-            # Créer un nouveau document SVG
-            dwg = svgwrite.Drawing(size=img.size)
-            
-            # Si non transparent, ajouter un fond blanc
-            if not transparent:
-                dwg.add(dwg.rect(size=('100%', '100%'), fill='white'))
-            
-            # Ajouter les chemins au SVG
-            for curve in path:
-                points = curve.tesselate()
-                d = f'M {points[0].x},{points[0].y}'
-                for p in points[1:]:
-                    d += f' L {p.x},{p.y}'
-                d += ' Z'
-                dwg.add(dwg.path(d=d, fill='black'))
-            
-            # Optimiser la sortie
-            svg_string = dwg.tostring()
-            
-            return svg_string
+            return svg
             
     except Exception as e:
-        raise Exception(f"Erreur lors de la conversion en SVG: {str(e)}")
+        raise Exception(f"Erreur lors de la conversion: {str(e)}")
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template_string(HTML_TEMPLATE)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -85,21 +197,16 @@ def upload_file():
         if file.filename == '':
             return jsonify({"error": "Aucun fichier sélectionné"}), 400
             
-        if not allowed_file(file.filename):
+        if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
             return jsonify({"error": "Type de fichier non autorisé"}), 400
 
-        # Sauvegarder le fichier temporairement
-        temp_path = UPLOAD_FOLDER / file.filename
+        temp_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(temp_path)
 
-        # Obtenir le paramètre transparent
-        transparent = request.form.get('transparent', 'false').lower() == 'true'
+        svg_content = simple_image_to_svg(temp_path)
 
-        # Convertir l'image en SVG
-        svg_content = image_to_svg(temp_path, transparent)
-
-        # Supprimer le fichier temporaire
-        temp_path.unlink()
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
         return jsonify({
             "success": True,
@@ -107,24 +214,10 @@ def upload_file():
         })
 
     except Exception as e:
-        # En cas d'erreur, nettoyer les fichiers temporaires
-        if 'temp_path' in locals() and temp_path.exists():
-            temp_path.unlink()
         return jsonify({
             "error": str(e)
         }), 500
 
-@app.errorhandler(413)
-def too_large(e):
-    return jsonify({
-        "error": "Le fichier est trop volumineux"
-    }), 413
-
-@app.errorhandler(500)
-def server_error(e):
-    return jsonify({
-        "error": "Erreur serveur interne"
-    }), 500
-
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
