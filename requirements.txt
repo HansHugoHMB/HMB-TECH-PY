@@ -1,41 +1,11 @@
-# Web Framework et dépendances
-Flask==2.3.3
-Flask-Cors==4.0.0
-gunicorn==21.2.0
-Werkzeug==2.3.7
-python-dotenv==1.0.0
-
-# Data Science essentiels
-numpy==1.24.3
-pandas==2.0.3
-scikit-learn==1.3.0
-
-# Traitement d'images et visualisation
-Pillow==10.0.0
-matplotlib==3.7.2
-plotly==5.16.1
-
-# Utilitaires
-requests==2.31.0
-python-multipart==0.0.6
-pyyaml==6.0.1
-tqdm==4.65.0
-pytz==2023.3
-
-# Base de données
-pymongo==4.4.1
-
-# Interface utilisateur
-streamlit==1.25.0
-dash==2.11.1
-dash-bootstrap-components==1.4.2
-
-# Sécurité
-cryptography==41.0.3
-bcrypt==4.0.1
-pyjwt==2.8.0
-
-# Traitement de fichiers
-openpyxl==3.1.2
-python-docx==0.8.11
-PyPDF2==3.0.1
+flask
+flask-cors
+numpy
+matplotlib
+pandas
+scikit-learn
+pycryptodome
+svgwrite
+cairosvg
+python-multipart
+gunicorn
