@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, render_template_string
 from PIL import Image
 import numpy as np
-import potrace
+import cv2
 import os
 
 app = Flask(__name__)
@@ -73,6 +73,20 @@ HTML = """
             padding: 20px;
             color: gold;
         }
+        .controls {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .controls label {
+            display: block;
+            margin: 10px 0;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -83,6 +97,17 @@ HTML = """
             <input type="file" id="file" hidden accept=".jpg,.jpeg,.png">
             <p>Cliquez ici pour sélectionner une image</p>
             <p style="font-size: 0.8em">(JPG, JPEG, PNG)</p>
+        </div>
+
+        <div class="controls">
+            <label>
+                Seuil de détection
+                <input type="range" id="threshold" min="0" max="255" value="128">
+            </label>
+            <label>
+                Niveau de détail
+                <input type="range" id="detail" min="1" max="100" value="50">
+            </label>
         </div>
 
         <div id="message"></div>
@@ -104,6 +129,7 @@ HTML = """
 
     <script>
         let currentSVG = '';
+        let currentFile = null;
         const message = document.getElementById('message');
         const loader = document.getElementById('loader');
         
@@ -114,21 +140,13 @@ HTML = """
             setTimeout(() => message.style.display = 'none', 5000);
         }
 
-        document.getElementById('file').onchange = function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+        function convertImage() {
+            if (!currentFile) return;
 
-            // Afficher la prévisualisation
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('preview').src = e.target.result;
-                document.getElementById('imagePreview').style.display = 'block';
-            }
-            reader.readAsDataURL(file);
-
-            // Envoyer pour conversion
             const form = new FormData();
-            form.append('file', file);
+            form.append('file', currentFile);
+            form.append('threshold', document.getElementById('threshold').value);
+            form.append('detail', document.getElementById('detail').value);
 
             loader.style.display = 'block';
             document.getElementById('svgResult').style.display = 'none';
@@ -152,7 +170,26 @@ HTML = """
                 loader.style.display = 'none';
                 showMessage(err.message || 'Erreur de conversion', true);
             });
+        }
+
+        document.getElementById('file').onchange = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            currentFile = file;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('preview').src = e.target.result;
+                document.getElementById('imagePreview').style.display = 'block';
+                convertImage();
+            }
+            reader.readAsDataURL(file);
         };
+
+        // Mise à jour automatique lors du changement des paramètres
+        document.getElementById('threshold').addEventListener('change', convertImage);
+        document.getElementById('detail').addEventListener('change', convertImage);
 
         function downloadSVG() {
             if (!currentSVG) return;
@@ -183,58 +220,43 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-def image_to_svg(file_path):
-    """Convertit une image en véritable SVG vectoriel"""
+def image_to_svg(file_path, threshold=128, detail=50):
+    """Convertit une image en SVG en utilisant OpenCV"""
     try:
-        # Ouvrir et préparer l'image
-        with Image.open(file_path) as img:
-            # Convertir en niveaux de gris
-            if img.mode != 'L':
-                img = img.convert('L')
-            
-            # Redimensionner si nécessaire
-            max_size = 800
-            if max(img.size) > max_size:
-                ratio = max_size / max(img.size)
-                new_size = tuple(int(dim * ratio) for dim in img.size)
-                img = img.resize(new_size, Image.LANCZOS)
+        # Lire l'image avec OpenCV
+        img = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+        
+        # Redimensionner si nécessaire
+        max_size = 800
+        if max(img.shape) > max_size:
+            ratio = max_size / max(img.shape[0])
+            img = cv2.resize(img, None, fx=ratio, fy=ratio)
 
-            # Convertir en tableau numpy
-            data = np.array(img)
+        # Appliquer un seuil pour binariser l'image
+        _, binary = cv2.threshold(img, threshold, 255, cv2.THRESH_BINARY)
 
-            # Créer un bitmap pour potrace
-            # Seuil à 128 pour la binarisation
-            bitmap = potrace.Bitmap(data < 128)
-            
-            # Tracer les contours
-            path = bitmap.trace()
+        # Trouver les contours
+        contours, _ = cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-            # Générer le SVG
-            width, height = img.size
-            svg = f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">'
-            svg += '<g transform="scale(1,-1) translate(0,-{})">'.format(height)
+        # Filtrer les contours selon le niveau de détail
+        min_area = (img.shape[0] * img.shape[1]) * (1 - detail/100) / 1000
+        filtered_contours = [cnt for cnt in contours if cv2.contourArea(cnt) > min_area]
 
-            # Ajouter les chemins
-            for curve in path:
-                svg += '<path d="'
-                for segment in curve:
-                    x0, y0 = segment.start_point
-                    svg += f'M {x0:.1f} {y0:.1f} '
-                    
-                    if segment.is_corner:
-                        x1, y1 = segment.c
-                        x2, y2 = segment.end_point
-                        svg += f'L {x1:.1f} {y1:.1f} L {x2:.1f} {y2:.1f} '
-                    else:
-                        x1, y1 = segment.c1
-                        x2, y2 = segment.c2
-                        x3, y3 = segment.end_point
-                        svg += f'C {x1:.1f} {y1:.1f} {x2:.1f} {y2:.1f} {x3:.1f} {y3:.1f} '
-                
-                svg += 'Z" fill="black" />'
-            
-            svg += '</g></svg>'
-            return svg
+        # Générer le SVG
+        height, width = img.shape
+        svg = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">'
+
+        # Ajouter les contours au SVG
+        for contour in filtered_contours:
+            path = "M"
+            for point in contour.reshape(-1, 2):
+                x, y = point
+                path += f" {x},{y}"
+            path += "Z"
+            svg += f'<path d="{path}" fill="black"/>'
+
+        svg += "</svg>"
+        return svg
 
     except Exception as e:
         raise Exception(f"Erreur de conversion : {str(e)}")
@@ -259,7 +281,10 @@ def convert():
         temp_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(temp_path)
         
-        svg = image_to_svg(temp_path)
+        threshold = int(request.form.get('threshold', 128))
+        detail = int(request.form.get('detail', 50))
+        
+        svg = image_to_svg(temp_path, threshold, detail)
         
         if os.path.exists(temp_path):
             os.remove(temp_path)
