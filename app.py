@@ -1,6 +1,10 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import time
+from threading import Thread
+from flask import Flask
+
+app = Flask(__name__)
 
 def watch_video():
     chrome_options = Options()
@@ -19,7 +23,19 @@ def watch_video():
     finally:
         driver.quit()
 
-if __name__ == "__main__":
+def run_watcher():
     while True:
         watch_video()
-        time.sleep(300)  # attends 5 minutes avant la prochaine vue
+        time.sleep(300)  # pause 5 minutes
+
+@app.route("/")
+def home():
+    return "Bienvenue sur le robot de visionnage automatique de ta vidéo Facebook !"
+
+if __name__ == "__main__":
+    # Lancer le robot en thread séparé pour ne pas bloquer Flask
+    watcher_thread = Thread(target=run_watcher, daemon=True)
+    watcher_thread.start()
+
+    # Lancer le serveur Flask
+    app.run(host="0.0.0.0", port=8000)
