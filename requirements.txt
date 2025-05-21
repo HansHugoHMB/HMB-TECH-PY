@@ -1,5 +1,125 @@
+
+# Web / API / Backend
 flask
-gunicorn
-matplotlib
-numpy
 flask-cors
+fastapi
+uvicorn
+gunicorn
+django
+httpx
+requests
+aiohttp
+websockets
+python-dotenv
+
+# Téléversement & fichiers
+werkzeug
+python-multipart
+starlette
+openpyxl
+PyPDF2
+python-docx
+xlrd
+csv
+tabulate
+json5
+filetype
+mimetypes
+
+# Cryptographie / Sécurité
+cryptography
+pycryptodome
+bcrypt
+hashlib
+pyjwt
+passlib
+rsa
+safetypes
+
+# Data Science / Analyse
+numpy
+pandas
+scipy
+matplotlib
+seaborn
+statsmodels
+scikit-learn
+xgboost
+lightgbm
+catboost
+
+# Deep Learning / NLP
+torch
+torchvision
+tensorflow
+keras
+transformers
+sentence-transformers
+nltk
+spacy
+textblob
+
+# SVG, HTML, CSS
+svgwrite
+cairosvg
+html5lib
+beautifulsoup4
+lxml
+jinja2
+dominate
+
+# Visualisation interactive
+plotly
+bokeh
+dash
+altair
+folium
+pyecharts
+streamlit
+ipywidgets
+
+# Web scraping & automatisation
+selenium
+scrapy
+parsel
+mechanize
+pyppeteer
+
+# Interface et apps
+tkintertable
+PyQt5
+PySimpleGUI
+Kivy
+eel
+flaskwebgui
+streamlit-option-menu
+
+# Utilitaires fréquents
+tqdm
+pyfiglet
+rich
+loguru
+uuid
+schedule
+arrow
+dateparser
+pytz
+faker
+watchdog
+
+# Compression / fichiers
+zlib
+lzma
+gzip
+zipfile38
+
+# Autres (utils, encodage, dev)
+pyyaml
+base64
+typing-extensions
+six
+markdown
+notebook
+jupyter
+colabcode
+pyngrok
