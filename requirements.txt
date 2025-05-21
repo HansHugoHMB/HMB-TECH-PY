@@ -26,7 +26,6 @@ pymongo
 # Cryptographie / sécurité
 cryptography
 pycryptodome
-hashlib
 bcrypt
 pyjwt
 itsdangerous
