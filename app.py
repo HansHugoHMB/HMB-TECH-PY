@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template_string, abort
 from PIL import Image
 import os
 import io
@@ -6,283 +6,180 @@ import base64
 
 app = Flask(__name__)
 
-# Template HTML simplifié mais fonctionnel
-HTML_TEMPLATE = '''
+# Template HTML simple mais fonctionnel
+HTML = """
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HMB Tech - Image to SVG</title>
+    <title>HMB Tech - Convertisseur Image → SVG</title>
     <style>
-        body {
-            background-color: #0D1C40;
-            color: #FFD700;
-            font-family: Arial, sans-serif;
+        body { 
+            background: #0D1C40; 
+            color: gold;
+            font-family: Arial;
             margin: 0;
             padding: 20px;
-            min-height: 100vh;
         }
-
         .container {
             max-width: 800px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.1);
+            margin: auto;
+            background: rgba(255,255,255,0.1);
             padding: 20px;
-            border-radius: 10px;
+            border-radius: 8px;
         }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        #dropZone {
-            border: 2px dashed #FFD700;
+        .upload-box {
+            border: 3px dashed gold;
             padding: 20px;
             text-align: center;
             margin: 20px 0;
             cursor: pointer;
-            background: rgba(255, 215, 0, 0.1);
         }
-
-        #previewContainer, #svgContainer {
-            background: rgba(0, 0, 0, 0.2);
+        .preview {
+            background: rgba(0,0,0,0.2);
             padding: 15px;
             margin: 15px 0;
-            border-radius: 5px;
+            border-radius: 4px;
             display: none;
         }
-
-        #previewImage, #outputSvg {
+        .preview img, .preview svg {
             max-width: 100%;
             height: auto;
-            display: block;
-            margin: 10px auto;
+            margin: 10px 0;
         }
-
         button {
-            background: #FFD700;
+            background: gold;
             color: #0D1C40;
             border: none;
-            padding: 10px 20px;
-            margin: 5px;
+            padding: 10px;
+            width: 100%;
+            margin: 5px 0;
+            border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            border-radius: 5px;
-            width: 100%;
         }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        #messageBox {
+        #message {
             padding: 10px;
             margin: 10px 0;
-            border-radius: 5px;
+            border-radius: 4px;
             display: none;
         }
-
-        .error {
-            background-color: #ff4444;
-            color: white;
-        }
-
-        .success {
-            background-color: #44ff44;
-            color: black;
-        }
-
-        #loadingSpinner {
-            display: none;
-            text-align: center;
-            margin: 20px 0;
-        }
-
-        #svgCode {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 10px;
-            border-radius: 5px;
-            color: #FFD700;
-            display: none;
-            white-space: pre-wrap;
-            overflow-x: auto;
-            margin-top: 10px;
-        }
+        .error { background: #ff4444; color: white; }
+        .success { background: #44ff44; color: black; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>HMB Tech - Convertisseur Image vers SVG</h1>
+        <h1>HMB Tech - Convertisseur Image → SVG</h1>
         
-        <div id="dropZone" onclick="document.getElementById('fileInput').click()">
-            <input type="file" id="fileInput" accept=".png,.jpg,.jpeg" style="display: none;">
-            <p>Cliquez ou glissez une image ici</p>
-            <p style="font-size: 0.8em">Formats acceptés: PNG, JPG, JPEG</p>
+        <div class="upload-box" onclick="document.getElementById('file').click()">
+            <input type="file" id="file" hidden accept=".jpg,.jpeg,.png">
+            <p>Cliquez ici pour sélectionner une image</p>
+            <p style="font-size: 0.8em">(JPG, JPEG, PNG)</p>
         </div>
 
-        <div id="messageBox"></div>
-        
-        <div id="loadingSpinner">
-            Conversion en cours...
+        <div id="message"></div>
+
+        <div id="imagePreview" class="preview">
+            <h3>Image originale :</h3>
+            <img id="preview">
         </div>
 
-        <div id="previewContainer">
-            <h3>Image originale:</h3>
-            <img id="previewImage" alt="Preview">
-        </div>
-
-        <div id="svgContainer">
-            <h3>SVG généré:</h3>
-            <div id="outputSvg"></div>
+        <div id="svgResult" class="preview">
+            <h3>SVG généré :</h3>
+            <div id="svgPreview"></div>
             <button onclick="downloadSVG()">Télécharger SVG</button>
-            <button onclick="toggleSvgCode()">Voir le code SVG</button>
-            <pre id="svgCode"></pre>
+            <button onclick="toggleCode()">Voir le code</button>
+            <pre id="svgCode" style="display:none; white-space:pre-wrap;"></pre>
         </div>
     </div>
 
     <script>
         let currentSVG = '';
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const messageBox = document.getElementById('messageBox');
-        const loadingSpinner = document.getElementById('loadingSpinner');
-        const previewContainer = document.getElementById('previewContainer');
-        const svgContainer = document.getElementById('svgContainer');
-        const svgCode = document.getElementById('svgCode');
-
-        function showMessage(message, isError = false) {
-            messageBox.textContent = message;
-            messageBox.style.display = 'block';
-            messageBox.className = isError ? 'error' : 'success';
-            setTimeout(() => {
-                messageBox.style.display = 'none';
-            }, 5000);
+        const message = document.getElementById('message');
+        
+        function showMessage(text, isError) {
+            message.textContent = text;
+            message.className = isError ? 'error' : 'success';
+            message.style.display = 'block';
+            setTimeout(() => message.style.display = 'none', 5000);
         }
 
-        function handleFile(file) {
+        document.getElementById('file').onchange = function(e) {
+            const file = e.target.files[0];
             if (!file) return;
-
-            const validTypes = ['image/jpeg', 'image/png'];
-            if (!validTypes.includes(file.type)) {
-                showMessage('Type de fichier non supporté. Utilisez PNG ou JPG/JPEG.', true);
-                return;
-            }
 
             // Afficher la prévisualisation
             const reader = new FileReader();
             reader.onload = function(e) {
-                document.getElementById('previewImage').src = e.target.result;
-                previewContainer.style.display = 'block';
-            };
+                document.getElementById('preview').src = e.target.result;
+                document.getElementById('imagePreview').style.display = 'block';
+            }
             reader.readAsDataURL(file);
 
-            // Envoyer le fichier
-            uploadFile(file);
-        }
+            // Envoyer pour conversion
+            const form = new FormData();
+            form.append('file', file);
 
-        async function uploadFile(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            loadingSpinner.style.display = 'block';
-            svgContainer.style.display = 'none';
-
-            try {
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
+            fetch('/convert', {
+                method: 'POST',
+                body: form
+            })
+            .then(res => res.json())
+            .then(data => {
                 if (data.error) {
-                    showMessage(data.error, true);
-                    return;
+                    throw new Error(data.error);
                 }
-
                 currentSVG = data.svg;
-                document.getElementById('outputSvg').innerHTML = currentSVG;
-                svgContainer.style.display = 'block';
-                showMessage('Conversion réussie!');
-
-            } catch (error) {
-                showMessage('Erreur lors du traitement de l\'image', true);
-                console.error('Error:', error);
-            } finally {
-                loadingSpinner.style.display = 'none';
-            }
-        }
+                document.getElementById('svgPreview').innerHTML = currentSVG;
+                document.getElementById('svgResult').style.display = 'block';
+                showMessage('Conversion réussie !', false);
+            })
+            .catch(err => {
+                showMessage(err.message || 'Erreur de conversion', true);
+            });
+        };
 
         function downloadSVG() {
-            if (!currentSVG) {
-                showMessage('Aucun SVG à télécharger', true);
-                return;
-            }
-
+            if (!currentSVG) return;
             const blob = new Blob([currentSVG], {type: 'image/svg+xml'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = 'image-convertie.svg';
-            document.body.appendChild(a);
             a.click();
-            document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            showMessage('SVG téléchargé avec succès!');
         }
 
-        function toggleSvgCode() {
-            if (svgCode.style.display === 'none') {
-                svgCode.textContent = currentSVG;
-                svgCode.style.display = 'block';
+        function toggleCode() {
+            const code = document.getElementById('svgCode');
+            if (code.style.display === 'none') {
+                code.textContent = currentSVG;
+                code.style.display = 'block';
             } else {
-                svgCode.style.display = 'none';
+                code.style.display = 'none';
             }
         }
-
-        // Event Listeners
-        fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
-
-        // Drag and Drop
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.style.backgroundColor = 'rgba(255, 215, 0, 0.2)';
-        });
-
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropZone.style.backgroundColor = 'rgba(255, 215, 0, 0.1)';
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.style.backgroundColor = 'rgba(255, 215, 0, 0.1)';
-            handleFile(e.dataTransfer.files[0]);
-        });
     </script>
 </body>
 </html>
-'''
+"""
 
-# Configuration
+# Dossier pour les fichiers temporaires
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-def convert_to_svg(image_path):
-    """Convertir une image en SVG"""
+def image_to_svg(file_path):
+    """Convertit une image en SVG avec data URL"""
     try:
-        with Image.open(image_path) as img:
-            # Convertir en RGB si nécessaire
+        with Image.open(file_path) as img:
+            # Convertir en RGB
             if img.mode in ('RGBA', 'LA'):
-                background = Image.new('RGBA', img.size, (255, 255, 255, 255))
-                if img.mode == 'RGBA':
-                    background.paste(img, mask=img.split()[3])
-                else:
-                    background.paste(img, mask=img.split()[1])
-                img = background.convert('RGB')
+                bg = Image.new('RGB', img.size, (255, 255, 255))
+                bg.paste(img, mask=img.split()[-1])
+                img = bg
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
             
@@ -290,58 +187,57 @@ def convert_to_svg(image_path):
             max_size = 800
             if max(img.size) > max_size:
                 ratio = max_size / max(img.size)
-                new_size = tuple(int(dim * ratio) for dim in img.size)
-                img = img.resize(new_size, Image.LANCZOS)
+                img = img.resize([int(s * ratio) for s in img.size], Image.LANCZOS)
 
             # Convertir en base64
             buffer = io.BytesIO()
-            img.save(buffer, format='PNG')
-            img_base64 = base64.b64encode(buffer.getvalue()).decode()
+            img.save(buffer, format='PNG', optimize=True)
+            img_b64 = base64.b64encode(buffer.getvalue()).decode()
             
+            # Générer le SVG
             width, height = img.size
-            
-            # Créer le SVG
-            svg = f'''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
-    <image width="{width}" height="{height}" href="data:image/png;base64,{img_base64}"/>
-</svg>'''
-            
-            return svg.strip()
-            
+            return f'''<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" 
+                      xmlns="http://www.w3.org/2000/svg">
+                      <image width="{width}" height="{height}" 
+                      href="data:image/png;base64,{img_b64}"/>
+                   </svg>'''
     except Exception as e:
-        raise Exception(f"Erreur lors de la conversion: {str(e)}")
+        raise Exception(f"Erreur de conversion : {str(e)}")
 
 @app.route('/')
-def index():
-    return render_template_string(HTML_TEMPLATE)
+def home():
+    return render_template_string(HTML)
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    try:
-        if 'file' not in request.files:
-            return jsonify({"error": "Aucun fichier envoyé"}), 400
+@app.route('/convert', methods=['POST'])
+def convert():
+    if 'file' not in request.files:
+        return jsonify({'error': 'Aucun fichier reçu'}), 400
+    
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'error': 'Nom de fichier vide'}), 400
         
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({"error": "Aucun fichier sélectionné"}), 400
-            
-        if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-            return jsonify({"error": "Type de fichier non autorisé"}), 400
+    if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+        return jsonify({'error': 'Format non supporté'}), 400
 
+    try:
         temp_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        try:
-            file.save(temp_path)
-            svg_content = convert_to_svg(temp_path)
-            return jsonify({
-                "success": True,
-                "svg": svg_content
-            })
-        finally:
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-
+        file.save(temp_path)
+        
+        svg = image_to_svg(temp_path)
+        
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+            
+        return jsonify({
+            'success': True,
+            'svg': svg
+        })
+        
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
