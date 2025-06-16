@@ -1,7 +1,4 @@
-import os
-from proxy import Proxy
+import subprocess
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))  # Render fournit le port via la variable PORT
-    proxy = Proxy()
-    proxy.run(host="0.0.0.0", port=port)
+    subprocess.run(["proxy", "--hostname", "0.0.0.0", "--port", "8080"])
